@@ -6,7 +6,7 @@ import java.util.Date;
 import static javax.persistence.GenerationType.IDENTITY;
 
 @Entity
-@Table(name="usrtab")
+@Table(name="USRTAB")
 public class User implements Serializable{
 	
 	/**
@@ -33,7 +33,7 @@ public class User implements Serializable{
 	private String role;
 	
 	@Temporal(TemporalType.DATE)
-	@Column(name = "BIRTH_DATE")
+	@Column(name = "JOIN_DATE")
 	private Date joiningDate;
 	
 	public User(long id, String name, String password, String role, Date joiningDate) {

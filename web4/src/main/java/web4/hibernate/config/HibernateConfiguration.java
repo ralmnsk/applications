@@ -12,11 +12,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 import org.springframework.orm.hibernate4.HibernateTransactionManager;
 import org.springframework.orm.hibernate4.LocalSessionFactoryBean;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.hibernate.SessionFactory;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 @Configuration
@@ -25,6 +29,9 @@ import org.hibernate.SessionFactory;
 @PropertySource(value= {"classpath:application.properties"})
 public class HibernateConfiguration {
 	
+	private static Logger logger =
+			LoggerFactory.getLogger(HibernateConfiguration.class);
+			
 	@Autowired
 	private Environment environment;
 	
@@ -41,29 +48,37 @@ public class HibernateConfiguration {
 	
 	@Bean
 	public DataSource dataSource() {
-		DriverManagerDataSource dataSource=new DriverManagerDataSource();
-		dataSource.setDriverClassName(environment.getRequiredProperty("jdbc.driverClassName"));
-		dataSource.setUrl(environment.getRequiredProperty("jdbc.url"));
-			
-		return dataSource;
+		try {
+				EmbeddedDatabaseBuilder dbBuilder =
+				new EmbeddedDatabaseBuilder();
+				return dbBuilder.setType(EmbeddedDatabaseType.H2)
+				.addScripts("classpath:sql/schema.sql",
+				"classpath:sql/data.sql").build();
+			} catch (Exception e) {
+				logger.error("Embedded DataSource bean cannot be created!", e);
+			return null;
+			}
 	}
 	
 	
 	private Properties hibernateProperties() {
-		Properties properties=new Properties();
-		properties.put("hibernate.dialect", environment.getRequiredProperty("hibernate.dialect"));
-		properties.put("hibernate.show_sql", environment.getRequiredProperty("hibernate.show_sql"));
-		properties.put("hibernate.format_sql", environment.getRequiredProperty("hibernate.format_sql"));
+		Properties hibernateProp = new Properties();
+		hibernateProp.put("hibernate.dialect", "org.hibernate.dialect.H2Dialect");
+		hibernateProp.put("hibernate.format_sql", true);
+		hibernateProp.put("hibernate.use_sql_comments", true);
+		hibernateProp.put("hibernate.show_sql", true);
+		hibernateProp.put("hibernate.max_fetch_depth", 3);
+		hibernateProp.put("hibernate.jdbc.batch_size", 10);
+		hibernateProp.put("hibernate.jdbc.fetch_size", 50);
 		
-		return properties;
+		return hibernateProp;
 	}
 	
 	
-	@Bean
-	@Autowired
-	public HibernateTransactionManager transactionManager(SessionFactory s) {
-		HibernateTransactionManager txManager = new HibernateTransactionManager();
-		txManager.setSessionFactory(s);
-		return txManager;
-	}
+	@Bean 
+	public PlatformTransactionManager transactionManager()
+			throws IOException {
+			return new HibernateTransactionManager(sessionFactory());
+			}
+
 }
